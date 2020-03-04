@@ -9,11 +9,12 @@ from sqlalchemy.orm import sessionmaker
 import DataModel
 
 logger = logging.getLogger('getFundData')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 class FundCrawler:
     def __init__(self, dbStr):
         self.fundList = []
+        self.fundCompanyList = []
         self.fundListUrl = 'http://fund.eastmoney.com/js/fundcode_search.js'
         self.fundCompanyUrl = 'http://fund.eastmoney.com/js/jjjz_gs.js?dt=1463791574015'
         self.engine = create_engine(dbStr)
@@ -37,18 +38,46 @@ class FundCrawler:
                 pinyin_brief = fund[1]
             )
             self.session.add(item)
-            logger.info("%d records is saved." % k)
+            logger.debug("%d records is saved." % (k +1))
         try:
             self.session.commit()
         except:
             self.session.rollback()
+
+    def getFundCompanyList(self):
+        temp = requests.get(self.fundCompanyUrl).content.decode('utf-8').\
+            strip('\ufeffvar gs={op:').strip('};')
+        self.fundCompanyList = json.loads(temp)
+    
+
+    def companyList2Db(self):
+        if not self.fundCompanyList:
+            return
+        for k, company in enumerate(self.fundCompanyList):
+            item = DataModel.FundCompany(
+                code = company[0],
+                name = company[1]
+            )
+            self.session.add(item)
+            logger.debug("%d company records is saved." % (k + 1))
+        try:
+            self.session.commit()
+        except Exception as e:
+            logger.error(e.msg)
+            self.session.rollback()
+
     
     def run(self):
         self.getFundList()
         self.fundList2Db()
+        self.getFundCompanyList()
+        self.companyList2Db()
     
     def create_table(self):
         DataModel.Base.metadata.create_all(self.engine)
+
+url = 'https://www.kjj.com/netvalue-history-info-list.php?code=001186&startDate=2019-03-02&endDate=2020-03-02'
+
 
 if __name__ == "__main__":
     fundCrawler = FundCrawler("sqlite:///fund.db")

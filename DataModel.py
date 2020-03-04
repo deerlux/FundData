@@ -15,6 +15,12 @@ class FundBasic(Base):
     pinyin_name = Column(String(64))
     pinyin_brief = Column(String(16))
 
+class FundCompany(Base):
+    __tablename__ = 'fund_company'
+    id = Column(Integer, primary_key=True)
+    code = Column(String(12), nullable=False)
+    name = Column(String(32), nullable=False)
+
 
 if __name__ == '__main__':
     engine = create_engine('sqlite:///fund.db')
